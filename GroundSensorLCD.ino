@@ -1,6 +1,10 @@
 // BMP085, DHT11, TinyRTC (DS1307) und 1.8 Zoll TFT-Farb-Display (HY-1.8 SPI)
 
 #include <SPI.h>
+#include <SD.h>
+#include "DateTime_Class.h"
+//#include "DHT_Class.h"
+
 
 #include "Adafruit_GFX.h"    // Adafruit Grafik-Bibliothek
 #include "Adafruit_ST7735.h" // Adafruit ST7735-Bibliothek
@@ -9,7 +13,7 @@
 #include <Wire.h>
 //#include "Adafruit_BMP085.h" // Adafruit BMP085-Bibliothek
 
-#include "RTClib.h"
+//#include "RTClib.h"
 
 #include <DHT.h>
 #define DHTPIN 4         // Zur Messung verwendeter Pin, in unserem Fall also Pin 4
@@ -19,6 +23,7 @@
 #define CS   10 // Arduino-Pin an Display CS   
 #define DC   8  // Arduino-Pin an Display A0
 #define RST  9  // Arduino Reset-Pin
+#define SD_CS    5  // Chip select line for SD card
 #define TFT_SCLK 13   // set these to be whatever pins you like!
 #define TFT_MOSI 11   // set these to be whatever pins you like!
 
@@ -30,29 +35,29 @@ Adafruit_ST7735 tft = Adafruit_ST7735(CS, DC, RST);  // Display-Bibliothek Setup
 // Constructor when using software SPI.  All output pins are configurable.
 //Adafruit_ST7735 tft = Adafruit_ST7735(CS, DC, TFT_MOSI, TFT_SCLK, RST);
 
-RTC_DS1307 RTC; // Tiny RTC Modul
+//RTC_DS1307 RTC; // Tiny RTC Modul
+DateTimeClass DTC;
 
 //Adafruit_BMP085 bmp;   // BMP085
 
 DHT dht(DHTPIN, DHTTYPE);  // Initialisieren des DHTs
 
-
-DateTime now;
-DateTime time_old;
-DateTime date_old;
-
-boolean night_mode=true;
+boolean night_mode = true;
+int tmp = 0;
 
 void setup(void) {
-  
+  Serial.begin(9600);
+
   // Initialisiere RTC
   Wire.begin();
-  RTC.begin();
+  DTC.init(&tft, 1000);
+
+  Serial.print("Initializing SD card...");
+  if (!SD.begin(SD_CS)) {
+    Serial.println("failed!");
+  } else 
+    Serial.println("OK!");
   
-  if (! RTC.isrunning()) {
-    // Aktuelles Datum und Zeit setzen, falls die Uhr noch nicht läuft
-    RTC.adjust(DateTime(__DATE__, __TIME__));
-  }
   
 //  bmp.begin();  // BMP085 starten
   
@@ -79,20 +84,11 @@ int32_t max_pressure=-1000;
 
 void loop() {
 
-  DateTime now=RTC.now();
-  
-  if(now.minute()!=time_old.minute()){
-    show_time(time_old,true);
-    time_old=now;
-    show_time(time_old,false);
-  }
-  if(now.day()!=date_old.day()){
-    show_date(date_old,true);
-    date_old=now;
-    show_date(date_old,false);
-  }
+  // Каждый раз обновляем таймер времени
+  DTC.update(night_mode);
   
   float t;
+  /*
   t=dht.readTemperature();
   if(isnan(t)){}
   else if((int)t!=(int)temp){
@@ -113,7 +109,35 @@ void loop() {
    if(max_humidity<hum)max_humidity=hum;
    show_hum(hum,false);
   }
+  */
   
+  //File dir = SD.open("/");
+  //dir.rewindDirectory();
+
+  /*while(true) {
+     File entry =  dir.openNextFile();
+     if (! entry) {
+       // no more files
+       //Serial.println("**nomorefiles**");
+       break;
+     }
+     // Print the 8.3 name
+     Serial.print(entry.name());
+     // Recurse for directories, otherwise print the file size
+     if (entry.isDirectory()) {
+       Serial.println("/");
+     } 
+     else{
+       // files have sizes, directories do not
+       Serial.print("\t\t");
+       Serial.println(entry.size(), DEC);
+        //if(bmpDraw(entry.name(),0,0))delay(5000);
+      }  
+     entry.close();
+   }
+
+   delay(1000);*/
+
 //  int32_t p=bmp.readPressure();
 //  if(p!=pressure){
 //   show_pressure(pressure,true);
@@ -123,7 +147,13 @@ void loop() {
 //   show_pressure(pressure,false);
 //  }
   
-  delay(10000);  
+  set_text(24,75, String((int)tmp-1) , ST7735_BLACK,3);  
+  set_text(24,75, String((int)tmp) , ST7735_RED,3);  
+  tmp++;
+  if(tmp >= 1000)
+    tmp = 0;
+
+  //delay(1000);  
  
 }
 
@@ -175,60 +205,6 @@ void show_pressure(float pressure,boolean clear){
   set_text(xs+68,ys+5,String((int32_t)min_pressure)+"Pa",clear?clearcolor:ST7735_MAGENTA,1);//
 }
 
-String get_day_of_week(uint8_t dow){ 
-  
-  String dows="  ";
-  switch(dow){
-   case 0: dows="So"; break;
-   case 1: dows="Mo"; break;
-   case 2: dows="Tu"; break;
-   case 3: dows="We"; break;
-   case 4: dows="Th"; break;
-   case 5: dows="Fr"; break;
-   case 6: dows="Sa"; break;
-  }
-  
-  return dows;
-}
-
-void show_time(DateTime now, boolean clear){
-  
-  int clearcolor=night_mode?ST7735_BLACK:ST7735_WHITE;
-  int textcolor=night_mode?ST7735_WHITE:ST7735_BLACK;
-
-  tft.setTextColor(clear?clearcolor:textcolor);
-      
-  tft.setTextSize(3);
-  tft.setCursor(21,21);
-  if(now.hour()<10)tft.print(0);
-  tft.print(now.hour(),DEC);
-  tft.print(":");
-  if(now.minute()<10)tft.print(0);
-  tft.print(now.minute(),DEC);
-//    tft.print(":");
-//    if(now.second()<10)tft.print(0);
-//    tft.print(now.second(),DEC);
-}
-
-void show_date(DateTime now,boolean clear){
-  
-  int clearcolor=night_mode?ST7735_BLACK:ST7735_WHITE;
-  int textcolor=night_mode?ST7735_WHITE:ST7735_BLACK;
-
-  tft.setTextColor(clear?clearcolor:textcolor);
-  tft.setTextSize(1);
-  tft.setCursor(24,47);  
-  tft.print(get_day_of_week(now.dayOfWeek()));
-  tft.print(", ");
-  if(now.day()<10)tft.print(0);
-  tft.print(now.day(),DEC);
-  tft.print(".");
-  if(now.month()<10)tft.print(0);
-  tft.print(now.month(),DEC);
-  tft.print(".");
-  tft.print(now.year(),DEC);
-}
-
 void set_text(int x,int y,String text,int color,int size){
   
   tft.setTextSize(size);
@@ -244,10 +220,13 @@ void display_show(){
   set_text(2,4,"Weather station",ST7735_BLUE,1);  
   set_text(14,147,"flasher@kar.kz",ST7735_GREEN,1);
   
-  time_old=date_old=RTC.now();
+  DTC.show_time(DTC.now, false);
+  DTC.show_date(DTC.now, false);
+
+  //time_old=date_old=RTC.now();
   
-  show_time(time_old,false);
-  show_date(date_old,false);  
+  //show_time(time_old,false);
+  //show_date(date_old,false);  
 }
 
 
