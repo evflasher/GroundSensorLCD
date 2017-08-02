@@ -1,4 +1,6 @@
 // BMP085, DHT11, TinyRTC (DS1307) und 1.8 Zoll TFT-Farb-Display (HY-1.8 SPI)
+//https://forum.arduino.cc/index.php?topic=165170.0
+//http://arduino.ru/forum/apparatnye-voprosy/initializing-sd-cardinitialization-failed-mega2560-sd-modul
 
 #include <SPI.h>
 #include <SD.h>
@@ -23,7 +25,7 @@
 #define CS   10 // Arduino-Pin an Display CS   
 #define DC   8  // Arduino-Pin an Display A0
 #define RST  9  // Arduino Reset-Pin
-#define SD_CS    5  // Chip select line for SD card
+#define SD_CS    53  // Chip select line for SD card
 #define TFT_SCLK 13   // set these to be whatever pins you like!
 #define TFT_MOSI 11   // set these to be whatever pins you like!
 
@@ -52,8 +54,15 @@ void setup(void) {
   Wire.begin();
   DTC.init(&tft, 1000);
 
-  Serial.print("Initializing SD card...");
-  if (!SD.begin(SD_CS)) {
+  Serial.print("Initializing SD card... ");
+  
+  // On the Ethernet Shield, CS is pin 4. It's set as an output by default.
+  // Note that even if it's not used as the CS pin, the hardware SS pin 
+  // (10 on most Arduino boards, 53 on the Mega) must be left as an output 
+  // or the SD library functions will not work. 
+  //pinMode(SD_CS, OUTPUT);
+
+  if (!SD.begin(SD_CS, 51, 50, 52)) {
     Serial.println("failed!");
   } else 
     Serial.println("OK!");
