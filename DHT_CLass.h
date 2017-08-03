@@ -4,19 +4,16 @@
 #include "Adafruit_ST7735.h" // Adafruit ST7735-Bibliothek
 #include <DHT.h>
 
-#define DHT_PIN 2
-#define DHT_TYPE DHT21
-
 
 class TemperatureClass
 {
   private:
 
-    DHT* dht; 
+    DHT _dht; 
     Adafruit_ST7735* _tft;  
 
     unsigned long previosMillis;
-    int updateInterval = 1000;
+    int updateInterval = 10000;
     boolean night_mode;
 
     float temp =          1000;
@@ -27,35 +24,37 @@ class TemperatureClass
     float max_humidity = -1000;
 
   public:
-    char *currentTime;
+    //char *currentTime;
     
     DateTime now;
     DateTime time_old;
     DateTime date_old;
 
+  TemperatureClass(uint8_t pin, uint8_t type):_dht(pin, type){}
+
   void init(Adafruit_ST7735* tft)
   {
     _tft = tft;
-
-    DHT dht(DHT_PIN, DHT_TYPE);  // Initialisieren des DHTs
+  
+    
+    //DHT dht(DHT_PIN, DHT_TYPE); 
     //_dht = dht;
 
-    dht.begin();
+    _dht.begin();
     //updateInterval = interval;
   }
 
-  void update(boolean _night_mode)
+  void update(boolean _night_mode, boolean force = false)
   {
     night_mode = _night_mode;
     unsigned long currentMillis = millis(); // текущее время в миллисекундах
     
-    if(currentMillis - previosMillis >= updateInterval){ // если прошла 1 секунда
+    if(force || currentMillis - previosMillis >= updateInterval){ // если прошла 1 секунда
       previosMillis = currentMillis;  // запоминаем момент времени
-      
   
       float t;
-  
-      t = dht->readTemperature();
+
+      t = _dht.readTemperature();
       if(isnan(t)){}
       else if((int)t!=(int)temp){
        show_temp(temp,true);
@@ -66,7 +65,7 @@ class TemperatureClass
       }
 
       
-      float h = dht->readHumidity();
+      float h = _dht.readHumidity();
       if(isnan(h)){}
       else if(h!=hum){
        show_hum(hum,true);
@@ -75,7 +74,6 @@ class TemperatureClass
        if(max_humidity<hum)max_humidity=hum;
        show_hum(hum,false);
       }
-  
 
     }
   }

@@ -47,17 +47,11 @@ class DateTimeClass
       if(now.minute() != time_old.minute()){
         show_time(time_old,true);
         time_old = now;
-        Serial.print(now.minute());
-        Serial.print(" ");
-        Serial.println(now.second());
         show_time(time_old,false);
       }
       if(now.day() != date_old.day()){
         show_date(date_old,true);
         date_old = now;
-        Serial.print(now.day());
-        Serial.print(" ");
-        Serial.println(now.month());
         show_date(date_old,false);
       }
     }
