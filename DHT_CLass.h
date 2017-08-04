@@ -4,6 +4,7 @@
 #include "Adafruit_ST7735.h" // Adafruit ST7735-Bibliothek
 #include <DHT.h>
 
+extern int activeScreen;
 
 class TemperatureClass
 {
@@ -22,6 +23,7 @@ class TemperatureClass
     float max_temp =     -1000;
     float min_humidity =  1000;
     float max_humidity = -1000;
+
 
   public:
     //char *currentTime;
@@ -80,6 +82,9 @@ class TemperatureClass
   
   void show_temp(float temp, boolean clear){
   
+    if(activeScreen != 1)
+      return;
+
     int clearcolor = night_mode?ST7735_BLACK:ST7735_WHITE;
     int textcolor = night_mode?ST7735_WHITE:ST7735_BLACK;
     
@@ -99,6 +104,8 @@ class TemperatureClass
   }
 
   void show_hum(float hum, boolean clear){
+    if(activeScreen != 1)
+      return;
 
     int clearcolor = night_mode?ST7735_BLACK:ST7735_WHITE;
     int textcolor = night_mode?ST7735_WHITE:ST7735_BLACK;

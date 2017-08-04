@@ -7,6 +7,7 @@
 #include "DateTime_Class.h"
 #include "DHT_Class.h"
 #include "Buzzer_Class.h"
+#include "ADC_PCF8591_Sensor_Class.h"
 
 
 #include "Adafruit_GFX.h"    // Adafruit Grafik-Bibliothek
@@ -44,10 +45,15 @@ DateTimeClass DTC;
 
 TemperatureClass temperature(DHT_PIN, DHT_TYPE);
 
+ADCSensorClass sensor;
 
 Buzzer buzzer;
 
 //Adafruit_BMP085 bmp;   // BMP085
+
+
+int activeScreen = 1;
+int totalScreen = 4;
 
 boolean night_mode = true;
 int tmp = 0;
@@ -56,7 +62,7 @@ int buttonValue;
 void setup(void) {
   Serial.begin(9600);
 
-  pinMode(BTN_PIN, INPUT);
+  pinMode(BTN_PIN, INPUT_PULLUP);
   //digitalWrite(BTN_PIN, INPUT_PULLUP);
 
   buzzer.init();
@@ -73,6 +79,8 @@ void setup(void) {
 //  bmp.begin();  // BMP085 starten
   
   //dht.begin();  // DHT starten
+
+  sensor.init(&tft);
   
   // Display
   tft.initR(INITR_BLACKTAB);     // ST7735-Chip initialisieren
@@ -89,7 +97,19 @@ int32_t pressure=1000;
 int32_t min_pressure=1000000;
 int32_t max_pressure=-1000;
 
+byte switchState = 1;
+byte lastState = 1;
+word shortDuration = 500;
+word longDuration = 2000;
+unsigned long switchTime = 0;
 
+int current;         // Current state of the button
+                     // (LOW is pressed b/c i'm using the pullup resistors)
+long millis_held;    // How long the button was held (milliseconds)
+long secs_held;      // How long the button was held (seconds)
+long prev_secs_held; // How long the button was held in the previous check
+byte previous = HIGH;
+unsigned long firstTime; // how long since the button was first pressed 
 
 void loop() {
 
@@ -98,8 +118,11 @@ void loop() {
 
   // Читаем температуру и влажность
   temperature.update(night_mode);
+
+  // Читаем датчики PCF8591
+  sensor.update(night_mode);
   
-  Serial.println(analogRead(BTN_PIN));
+  //Serial.println(analogRead(BTN_PIN));
   
 
 //  int32_t p=bmp.readPressure();
@@ -111,13 +134,62 @@ void loop() {
 //   show_pressure(pressure,false);
 //  }
   
-  buttonValue = analogRead(BTN_PIN); //Read analog value from A0 pin
-  if (buttonValue >= 830 && buttonValue <= 890){
-    buzzer.button_beep();
+  //buttonValue = analogRead(BTN_PIN); 
+
+  current = digitalRead(BTN_PIN);
+
+  // if the button state changes to pressed, remember the start time 
+  if (current == LOW && previous == HIGH && (millis() - firstTime) > 200) {
+    firstTime = millis();
   }
 
-  set_text(1,135, String((int)tmp-1) , ST7735_BLACK,1);  
-  set_text(1,135, String((int)tmp) , ST7735_RED,1);  
+  millis_held = (millis() - firstTime);
+  secs_held = millis_held / 1000;
+
+  // This if statement is a basic debouncing tool, the button must be pushed for at least
+  // 100 milliseconds in a row for it to be considered as a push.
+  if (millis_held > 50) {
+
+    if (current == LOW && secs_held > prev_secs_held) {
+    }
+
+    // check if the button was released since we last checked
+    if (current == HIGH && previous == LOW) {
+      // HERE YOU WOULD ADD VARIOUS ACTIONS AND TIMES FOR YOUR OWN CODE
+      // ===============================================================================
+
+      // Button pressed for less than 1 second, one long LED blink
+      if (secs_held <= 0) {
+        buzzer.button_beep();
+
+        if(activeScreen == totalScreen)
+          activeScreen = 0;
+
+        activeScreen++;
+
+        changeScreen();
+      }
+
+      // If the button was held for 3-6 seconds blink LED 10 times
+      if (secs_held >= 1 && secs_held < 3) {
+        buzzer.button_beep();
+        delay(500);
+        buzzer.button_beep();
+      }
+
+      // Button held for 1-3 seconds, print out some info
+      if (secs_held >= 3) {
+        buzzer.welcome_beep();
+      }
+      // ===============================================================================
+    }
+  }
+
+  previous = current;
+  prev_secs_held = secs_held;
+
+  set_text(1,125, String((int)tmp-1) , ST7735_BLACK,2);  
+  set_text(1,125, String((int)tmp) , ST7735_WHITE,2);  
   tmp++;
   if(tmp >= 1000)
     tmp = 0;
@@ -154,7 +226,7 @@ void display_show(){
 
   tft.fillScreen(night_mode?ST7735_BLACK:ST7735_WHITE); 
   
-  set_text(2,4,"Weather station",ST7735_BLUE,1);  
+  set_text(2,4,"Weather station",ST7735_BLUE,1);
   set_text(14,147,"flasher@kar.kz",ST7735_GREEN,1);
   
   DTC.show_time(DTC.now, false);
@@ -166,4 +238,25 @@ void display_show(){
   //show_date(date_old,false);  
 }
 
+void changeScreen(){
+
+  //Serial.println(activeScreen);
+
+  if(activeScreen == 1){
+    display_show();
+  }
+  else if(activeScreen == 2){
+    String str = String(sensor.sensorValue1);
+    tft.fillScreen(night_mode?ST7735_BLACK:ST7735_WHITE);
+    set_text(4,55,str, ST7735_GREEN,4);
+  } 
+  else if(activeScreen == 3){
+    String str = String(sensor.sensorValue2);
+    tft.fillScreen(night_mode?ST7735_BLACK:ST7735_WHITE);
+    set_text(4,55,str, ST7735_GREEN,4);
+  } 
+  else {
+    tft.fillScreen(night_mode?ST7735_BLACK:ST7735_WHITE);
+  }
+}
 

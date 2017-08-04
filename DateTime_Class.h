@@ -3,6 +3,7 @@
 #include "Adafruit_ST7735.h" // Adafruit ST7735-Bibliothek
 #include "RTClib.h"
 
+extern int activeScreen;
 
 class DateTimeClass
 {
@@ -74,7 +75,9 @@ class DateTimeClass
   }
 
   void show_time(DateTime now, boolean clear){
-    
+    if(activeScreen != 1)
+      return;
+
     int clearcolor = night_mode ? ST7735_BLACK : ST7735_WHITE;
     int textcolor = night_mode ? ST7735_WHITE : ST7735_BLACK;
 
@@ -93,7 +96,9 @@ class DateTimeClass
   }
 
   void show_date(DateTime now,boolean clear){
-  
+    if(activeScreen != 1)
+      return;
+
     int clearcolor = night_mode ? ST7735_BLACK:ST7735_WHITE;
     int textcolor = night_mode ? ST7735_WHITE:ST7735_BLACK;
 
