@@ -55,12 +55,12 @@ class ADCSensorClass
       sensorValue1 = pcf.analogRead (0);
       sensorValue2 = pcf2.analogRead (0);
 
-      Serial.print (sensorValue1, DEC);
-      Serial.print (" ");
+      // Serial.print (sensorValue1, DEC);
+      // Serial.print (" ");
 
-      Serial.print (sensorValue2, DEC);
-      Serial.print (" ");
-      Serial.println ();
+      // Serial.print (sensorValue2, DEC);
+      // Serial.print (" ");
+      // Serial.println ();
     }
   }
   

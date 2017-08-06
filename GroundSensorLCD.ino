@@ -25,7 +25,7 @@
 #define CS   10 // Arduino-Pin an Display CS   
 #define DC   9  // Arduino-Pin an Display A0
 //#define RST  0  // Arduino Reset-Pin Use RESET on board
-//#define SD_CS    4  // Chip select line for SD card
+#define SD_CS    4  // Chip select line for SD card
 #define TFT_SCLK 13   // set these to be whatever pins you like!
 #define TFT_MOSI 11   // set these to be whatever pins you like!
 
@@ -55,12 +55,23 @@ Buzzer buzzer;
 int activeScreen = 1;
 int totalScreen = 4;
 
+int loggerUpdateInterval = 5000;
+unsigned long loggerPreviosMillis;
+
 boolean night_mode = true;
+boolean SDCardInitialized = false;
 int tmp = 0;
 int buttonValue;
 
 void setup(void) {
   Serial.begin(9600);
+
+  if (!SD.begin(SD_CS)) {
+    Serial.println("Card failed, or not present");
+    // don't do anything more:
+    
+  } else 
+    SDCardInitialized = true;
 
   pinMode(BTN_PIN, INPUT_PULLUP);
   //digitalWrite(BTN_PIN, INPUT_PULLUP);
@@ -188,6 +199,8 @@ void loop() {
   previous = current;
   prev_secs_held = secs_held;
 
+
+  dataLogger();
   set_text(1,125, String((int)tmp-1) , ST7735_BLACK,2);  
   set_text(1,125, String((int)tmp) , ST7735_WHITE,2);  
   tmp++;
@@ -248,15 +261,84 @@ void changeScreen(){
   else if(activeScreen == 2){
     String str = String(sensor.sensorValue1);
     tft.fillScreen(night_mode?ST7735_BLACK:ST7735_WHITE);
+    drawDiagram(1);
+    //tft.drawRect(1, 1, 99, 99, ST7735_WHITE);
     set_text(4,55,str, ST7735_GREEN,4);
   } 
   else if(activeScreen == 3){
     String str = String(sensor.sensorValue2);
     tft.fillScreen(night_mode?ST7735_BLACK:ST7735_WHITE);
+    drawDiagram(2);
+    //tft.drawRect(1, 1, 199, 199, ST7735_GREEN);
     set_text(4,55,str, ST7735_GREEN,4);
   } 
   else {
     tft.fillScreen(night_mode?ST7735_BLACK:ST7735_WHITE);
+  }
+}
+
+void drawDiagram(int sensor){
+  int16_t color = ST7735_WHITE;
+  if(sensor == 2){
+    color = ST7735_GREEN;
+  }
+  tft.drawRect(1, 1, 99, 99, color);
+}
+
+void dataLogger(){
+  if(!SDCardInitialized)
+    return;
+
+  unsigned long currentMillis = millis(); // текущее время в миллисекундах
+  
+  if(currentMillis - loggerPreviosMillis < loggerUpdateInterval){ // если прошла 1 секунда
+    return;
+  }
+
+  loggerPreviosMillis = currentMillis;  // запоминаем момент времени
+
+  String dataString = "";
+
+  dataString += "{";
+  dataString += "\"date\":\"" + String(DTC.now.year())+"."+
+                ((DTC.now.month()<10) ? "0" : "")+DTC.now.month()+"."+
+                ((DTC.now.day()<10) ? "0" : "")+DTC.now.day()+"T"+
+                ((DTC.now.hour()<10) ? "0" : "")+DTC.now.hour()+":"+
+                ((DTC.now.minute()<10) ? "0" : "")+DTC.now.minute()+":"+
+                ((DTC.now.second()<10) ? "0" : "")+DTC.now.second()+"\",";
+
+  dataString += "\"t\":\""+String(temperature.temp)+"\",";  
+  dataString += "\"h\":\""+String(temperature.hum)+"\",";  
+  
+
+  dataString += "\"sensorvalues\":{";
+  dataString += "\"s1\":\""+String(sensor.sensorValue1)+"\",";  
+  dataString += "\"s2\":\""+String(sensor.sensorValue2)+"\"";  
+  dataString += "}}";
+
+  // read three sensors and append to the string:
+  // for (int analogPin = 0; analogPin < 3; analogPin++) {
+  //   int sensor = analogRead(analogPin);
+  //   dataString += String(sensor);
+  //   if (analogPin < 2) {
+  //     dataString += ",";
+  //   }
+  // }
+
+  // open the file. note that only one file can be open at a time,
+  // so you have to close this one before opening another.
+  File dataFile = SD.open("datalog.txt", FILE_WRITE);
+
+  // if the file is available, write to it:
+  if (dataFile) {
+    dataFile.println(dataString);
+    dataFile.close();
+    // print to the serial port too:
+    Serial.println(dataString);
+  }
+  // if the file isn't open, pop up an error:
+  else {
+    Serial.println("error opening datalog.txt");
   }
 }
 

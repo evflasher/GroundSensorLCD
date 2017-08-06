@@ -17,20 +17,18 @@ class TemperatureClass
     int updateInterval = 10000;
     boolean night_mode;
 
-    float temp =          1000;
-    float hum  =          1000;
-    float min_temp =      1000;
-    float max_temp =     -1000;
-    float min_humidity =  1000;
-    float max_humidity = -1000;
+    //float temp =          1000;
+    //float hum  =          1000;
+    int min_temp =      1000;
+    int max_temp =     -1000;
+    int min_humidity =  1000;
+    int max_humidity = -1000;
 
 
   public:
     //char *currentTime;
-    
-    DateTime now;
-    DateTime time_old;
-    DateTime date_old;
+    int temp = 0;
+    int hum = 0;
 
   TemperatureClass(uint8_t pin, uint8_t type):_dht(pin, type){}
 
@@ -54,24 +52,24 @@ class TemperatureClass
     if(force || currentMillis - previosMillis >= updateInterval){ // если прошла 1 секунда
       previosMillis = currentMillis;  // запоминаем момент времени
   
-      float t;
+      int t;
 
       t = _dht.readTemperature();
       if(isnan(t)){}
       else if((int)t!=(int)temp){
        show_temp(temp,true);
-       temp=t;
+       temp = t;
        if(min_temp>temp)min_temp=temp;
        if(max_temp<temp)max_temp=temp;
        show_temp(temp,false);
       }
 
       
-      float h = _dht.readHumidity();
+      int h = _dht.readHumidity();
       if(isnan(h)){}
       else if(h!=hum){
        show_hum(hum,true);
-       hum=h;
+       hum = h;
        if(min_humidity>hum)min_humidity=hum;
        if(max_humidity<hum)max_humidity=hum;
        show_hum(hum,false);
@@ -126,45 +124,6 @@ class TemperatureClass
     _tft->print(text);
   }
 
-  /*
-  void show_time(DateTime now, boolean clear){
-    
-    int clearcolor = night_mode ? ST7735_BLACK : ST7735_WHITE;
-    int textcolor = night_mode ? ST7735_WHITE : ST7735_BLACK;
-
-    _tft->setTextColor(clear ? clearcolor : textcolor);
-        
-    _tft->setTextSize(3);
-    _tft->setCursor(21,21);
-    if(now.hour()<10)_tft->print(0);
-    _tft->print(now.hour(),DEC);
-    _tft->print(":");
-    if(now.minute()<10)_tft->print(0);
-    _tft->print(now.minute(),DEC);
-  //    _tft->print(":");
-  //    if(now.second()<10)_tft->print(0);
-  //    _tft->print(now.second(),DEC);
-  }
-
-  void show_date(DateTime now,boolean clear){
-  
-    int clearcolor = night_mode ? ST7735_BLACK:ST7735_WHITE;
-    int textcolor = night_mode ? ST7735_WHITE:ST7735_BLACK;
-
-    _tft->setTextColor(clear ? clearcolor : textcolor);
-    _tft->setTextSize(1);
-    _tft->setCursor(24,47);  
-    _tft->print(get_day_of_week(now.dayOfTheWeek()));
-    _tft->print(", ");
-    if(now.day()<10)_tft->print(0);
-    _tft->print(now.day(),DEC);
-    _tft->print(".");
-    if(now.month()<10)_tft->print(0);
-    _tft->print(now.month(),DEC);
-    _tft->print(".");
-    _tft->print(now.year(),DEC);
-  }
-  */
 
 };
 
